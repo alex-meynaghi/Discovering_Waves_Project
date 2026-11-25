@@ -1,0 +1,74 @@
+import cv2 as cv
+import numpy as np
+import matplotlib.pyplot as plt
+
+cap = cv.VideoCapture('falling 2 balls.mp4')
+
+cv.namedWindow('frame',cv.WINDOW_NORMAL)
+cv.resizeWindow('frame', 1920//2, 1080//2)
+cv.namedWindow('frame_threshold', cv.WINDOW_NORMAL)
+cv.resizeWindow('frame_threshold', 1920//2, 1080//2)
+
+fps=cap.get(5)
+
+all_centers = [] # centroids for all video frames
+
+while True:
+    ret, frame= cap.read()
+    if not ret:
+        break
+    
+    frame_HSV = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+    frame_threshold = cv.inRange(frame_HSV, (40,100,100), (50,255,255))
+    contours,hierarchy = cv.findContours(frame_threshold, 1, 2)
+    
+    frame_centers = [] # centroids from one frame sorted
+    #print (frame_centers)
+    for contour in contours:
+        moment = cv.moments(contour)
+        if moment['m00'] == 0:
+            continue
+        cx = int(moment['m10']/moment['m00'])
+        cy = int(moment['m01']/moment['m00'])
+        frame_centers.append((cx,cy))
+        cv.circle(frame, (cx, cy), 3, (0, 0, 255), -1)
+        #print(cx,cy)
+    frame_centers.sort(key=lambda center: center[0]) # sorting each item in the
+    
+    for index, (cx, cy) in enumerate(frame_centers): # drawing indacting right indicies
+        
+        cv.putText(frame, str(index), (cx-25, cy-25), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+    all_centers.append(frame_centers)                # list based on x pixel
+                                                     # coordinate from left to right
+    cv.imshow('frame', frame)
+    cv.imshow('frame_threshold', frame_threshold)
+
+    if cv.waitKey(1) == ord('q'):
+        break
+cap.release()
+cv.destroyAllWindows()
+
+centroids = np.array(all_centers)
+frames_teller = np.arange(0,len(centroids))
+time_frame = frames_teller/fps
+
+y_coodinates = []
+y1_coodinates = []
+for i in range(len(centroids)):
+    y = centroids [i][0][1]
+    y_coodinates.append(y)
+    y1 = centroids [i][1][1]
+    y1_coodinates.append(y1)
+#print(y_coodinates)
+
+
+
+fig = plt.figure()
+plt.subplot(1,2,1)
+plt.plot(time_frame, y_coodinates,'.' )
+plt.subplot(1,2,2)
+plt.plot(time_frame, y1_coodinates,'.')
+fig.supxlabel('time (s)')
+fig.supylabel('centoid y coordinate (pixel)')
+plt.show()
